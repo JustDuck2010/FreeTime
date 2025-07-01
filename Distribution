@@ -1,41 +1,47 @@
 import time
+import random
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys  # <-- Добавьте эту строку
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def send_whatsapp_messages(phone_numbers, message):
-    driver = webdriver.Firefox()  # Или webdriver.Chrome()
-    driver.get("https://web.whatsapp.com/")
-    print("Отсканируйте QR-код WhatsApp Web и нажмите Enter...")
+    driver = webdriver.Firefox()
+    driver.get("https://web.whatsapp.com")
+    print("Отсканируйте QR-код и нажмите Enter...")
     input()
 
     for number in phone_numbers:
         try:
-            # Форматируем номер для Израиля (052... -> +97252...)
-            if number.startswith("0"):
-                formatted_number = "+972" + number[1:]  # Удаляем 0, добавляем +972
-            else:
-                formatted_number = number
-
+            # Форматирование номера
+            formatted_number = "+972" + number[1:] if number.startswith("0") else number
             chat_url = f"https://web.whatsapp.com/send?phone={formatted_number}&text={message}"
             driver.get(chat_url)
-
-            # Ждем появления поля ввода (актуальный XPath)
-            input_box = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, '//div[@role="textbox"][@contenteditable="true"]'))
+            
+            # Ожидание и проверка загрузки чата
+            WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.XPATH, '//div[@role="textbox"]'))
             )
-            input_box.send_keys(Keys.ENTER)  # Отправляем сообщение
-            print(f"Сообщение отправлено на {formatted_number}")
-            time.sleep(5)  # Пауза между сообщениями
-
+            
+            # Вариант 1: JavaScript-клик по кнопке (надежный способ)
+            send_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, 
+                    '//button[contains(@class,"x1c4vz4f") and @aria-label="Отправить"]'))
+            )
+            driver.execute_script("arguments[0].click();", send_button)
+            
+            print(f"✓ Сообщение отправлено на {formatted_number}")
+            
+            # Случайная задержка 7-15 секунд
+            time.sleep(random.uniform(7, 15))
+            
         except Exception as e:
-            print(f"Ошибка при отправке на {number}: {str(e)[:200]}")  # Выводим укороченную ошибку
+            print(f"Ошибка для {number}: {str(e)[:150]}")
+            time.sleep(5)
 
     driver.quit()
 
 if __name__ == "__main__":
     message = input("Введите сообщение: ")
-    numbers = input("Введите номера (например, 0521234567 через пробел): ").split()
+    numbers = input("Введите номера (052... через пробел): ").split()
     send_whatsapp_messages(numbers, message)
